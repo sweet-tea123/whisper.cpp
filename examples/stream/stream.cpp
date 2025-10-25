@@ -13,6 +13,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <cfloat>          // FLT_MAX
 
 // command-line parameters
 struct whisper_params {
@@ -20,6 +21,14 @@ struct whisper_params {
     int32_t step_ms    = 3000;
     int32_t length_ms  = 10000;
     int32_t keep_ms    = 200;
+    // ---- full Silero-VAD options (parity with whisper-cli) ----
+    std::string vad_model;
+    float  vad_threshold              = 0.5f;
+    int    vad_min_speech_duration_ms = 250;
+    int    vad_min_silence_duration_ms= 100;
+    float  vad_max_speech_duration_s  = FLT_MAX;
+    int    vad_speech_pad_ms          = 30;
+    float  vad_samples_overlap        = 0.1f;
     int32_t capture_id = -1;
     int32_t max_tokens = 32;
     int32_t audio_ctx  = 0;
@@ -70,6 +79,13 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
         else if (arg == "-l"    || arg == "--language")      { params.language      = argv[++i]; }
         else if (arg == "-m"    || arg == "--model")         { params.model         = argv[++i]; }
         else if (arg == "-f"    || arg == "--file")          { params.fname_out     = argv[++i]; }
+        else if (arg == "--vad-model")                        { params.vad_model     = argv[++i]; }
+        else if (arg == "--vad-threshold")                    { params.vad_threshold = std::stof(argv[++i]); }
+        else if (arg == "--vad-min-speech-duration-ms")       { params.vad_min_speech_duration_ms  = std::stoi(argv[++i]); }
+        else if (arg == "--vad-min-silence-duration-ms")      { params.vad_min_silence_duration_ms = std::stoi(argv[++i]); }
+        else if (arg == "--vad-max-speech-duration-s")        { params.vad_max_speech_duration_s   = std::stof(argv[++i]); }
+        else if (arg == "--vad-speech-pad-ms")                { params.vad_speech_pad_ms           = std::stoi(argv[++i]); }
+        else if (arg == "--vad-samples-overlap")              { params.vad_samples_overlap         = std::stof(argv[++i]); }
         else if (arg == "-tdrz" || arg == "--tinydiarize")   { params.tinydiarize   = true; }
         else if (arg == "-sa"   || arg == "--save-audio")    { params.save_audio    = true; }
         else if (arg == "-ng"   || arg == "--no-gpu")        { params.use_gpu       = false; }
@@ -109,6 +125,14 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "  -l LANG,  --language LANG [%-7s] spoken language\n",                                params.language.c_str());
     fprintf(stderr, "  -m FNAME, --model FNAME   [%-7s] model path\n",                                     params.model.c_str());
     fprintf(stderr, "  -f FNAME, --file FNAME    [%-7s] text output file name\n",                          params.fname_out.c_str());
+    fprintf(stderr, "\nSilero-VAD options (optional):\n");
+    fprintf(stderr, "  --vad-model FNAME            [%-7s] Silero-VAD ggml path\n", params.vad_model.c_str());
+    fprintf(stderr, "  --vad-threshold              [%-7.2f] speech threshold\n", params.vad_threshold);
+    fprintf(stderr, "  --vad-min-speech-duration-ms [%-7d] min speech length (ms)\n", params.vad_min_speech_duration_ms);
+    fprintf(stderr, "  --vad-min-silence-duration-ms[%-7d] min silence to split (ms)\n", params.vad_min_silence_duration_ms);
+    fprintf(stderr, "  --vad-max-speech-duration-s  [%-7s] max speech before force-split (s)\n", params.vad_max_speech_duration_s == FLT_MAX ? "inf" : std::to_string(params.vad_max_speech_duration_s).c_str());
+    fprintf(stderr, "  --vad-speech-pad-ms          [%-7d] pad detected segments (ms)\n", params.vad_speech_pad_ms);
+    fprintf(stderr, "  --vad-samples-overlap        [%-7.2f] overlap adjacent segments (s)\n", params.vad_samples_overlap);
     fprintf(stderr, "  -tdrz,    --tinydiarize   [%-7s] enable tinydiarize (requires a tdrz model)\n",     params.tinydiarize ? "true" : "false");
     fprintf(stderr, "  -sa,      --save-audio    [%-7s] save the recorded audio to a file\n",              params.save_audio ? "true" : "false");
     fprintf(stderr, "  -ng,      --no-gpu        [%-7s] disable GPU inference\n",                          params.use_gpu ? "false" : "true");
@@ -330,6 +354,17 @@ int main(int argc, char ** argv) {
             wparams.audio_ctx        = params.audio_ctx;
 
             wparams.tdrz_enable      = params.tinydiarize; // [TDRZ]
+            // Enable Silero-VAD if requested (library loads model internally)
+            if (!params.vad_model.empty()) {
+                wparams.vad            = true;
+                wparams.vad_model_path = params.vad_model.c_str();
+                wparams.vad_params.threshold               = params.vad_threshold;
+                wparams.vad_params.min_speech_duration_ms  = params.vad_min_speech_duration_ms;
+                wparams.vad_params.min_silence_duration_ms = params.vad_min_silence_duration_ms;
+                wparams.vad_params.max_speech_duration_s   = params.vad_max_speech_duration_s;
+                wparams.vad_params.speech_pad_ms           = params.vad_speech_pad_ms;
+                wparams.vad_params.samples_overlap         = params.vad_samples_overlap;
+            }
 
             // disable temperature fallback
             //wparams.temperature_inc  = -1.0f;
