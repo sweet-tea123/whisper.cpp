@@ -18,6 +18,7 @@
 // command-line parameters
 struct whisper_params {
     int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
+    bool        use_vad   = false;          // enable Silero-VAD
     int32_t step_ms    = 3000;
     int32_t length_ms  = 10000;
     int32_t keep_ms    = 200;
@@ -79,7 +80,16 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
         else if (arg == "-l"    || arg == "--language")      { params.language      = argv[++i]; }
         else if (arg == "-m"    || arg == "--model")         { params.model         = argv[++i]; }
         else if (arg == "-f"    || arg == "--file")          { params.fname_out     = argv[++i]; }
-        else if (arg == "--vad-model")                        { params.vad_model     = argv[++i]; }
+        // ----- Silero-VAD short aliases (parity with cli.cpp) -----
+        else if (arg == "--vad")                               { params.use_vad       = true; }
+        else if (arg == "-vm"   || arg == "--vad-model")       { params.vad_model     = argv[++i]; params.use_vad = true; }
+        else if (arg == "-vt"   || arg == "--vad-threshold")   { params.vad_threshold = std::stof(argv[++i]); }
+        else if (arg == "-vspd" || arg == "--vad-min-speech-duration-ms")  { params.vad_min_speech_duration_ms  = std::stoi(argv[++i]); }
+        else if (arg == "-vsd"  || arg == "--vad-min-silence-duration-ms") { params.vad_min_silence_duration_ms = std::stoi(argv[++i]); }
+        else if (arg == "-vmsd" || arg == "--vad-max-speech-duration-s")   { params.vad_max_speech_duration_s   = std::stof(argv[++i]); }
+        else if (arg == "-vp"   || arg == "--vad-speech-pad-ms")           { params.vad_speech_pad_ms           = std::stoi(argv[++i]); }
+        else if (arg == "-vo"   || arg == "--vad-samples-overlap")         { params.vad_samples_overlap         = std::stof(argv[++i]); }
+        else if (arg == "--vad-model")                        { params.vad_model     = argv[++i]; params.use_vad = true; }
         else if (arg == "--vad-threshold")                    { params.vad_threshold = std::stof(argv[++i]); }
         else if (arg == "--vad-min-speech-duration-ms")       { params.vad_min_speech_duration_ms  = std::stoi(argv[++i]); }
         else if (arg == "--vad-min-silence-duration-ms")      { params.vad_min_silence_duration_ms = std::stoi(argv[++i]); }
@@ -125,14 +135,17 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "  -l LANG,  --language LANG [%-7s] spoken language\n",                                params.language.c_str());
     fprintf(stderr, "  -m FNAME, --model FNAME   [%-7s] model path\n",                                     params.model.c_str());
     fprintf(stderr, "  -f FNAME, --file FNAME    [%-7s] text output file name\n",                          params.fname_out.c_str());
-    fprintf(stderr, "\nSilero-VAD options (optional):\n");
-    fprintf(stderr, "  --vad-model FNAME            [%-7s] Silero-VAD ggml path\n", params.vad_model.c_str());
-    fprintf(stderr, "  --vad-threshold              [%-7.2f] speech threshold\n", params.vad_threshold);
-    fprintf(stderr, "  --vad-min-speech-duration-ms [%-7d] min speech length (ms)\n", params.vad_min_speech_duration_ms);
-    fprintf(stderr, "  --vad-min-silence-duration-ms[%-7d] min silence to split (ms)\n", params.vad_min_silence_duration_ms);
-    fprintf(stderr, "  --vad-max-speech-duration-s  [%-7s] max speech before force-split (s)\n", params.vad_max_speech_duration_s == FLT_MAX ? "inf" : std::to_string(params.vad_max_speech_duration_s).c_str());
-    fprintf(stderr, "  --vad-speech-pad-ms          [%-7d] pad detected segments (ms)\n", params.vad_speech_pad_ms);
-    fprintf(stderr, "  --vad-samples-overlap        [%-7.2f] overlap adjacent segments (s)\n", params.vad_samples_overlap);
+    fprintf(stderr, "\nVoice Activity Detection (VAD) options:\n");
+    fprintf(stderr, "             --vad                           [%-7s] enable Voice Activity Detection (VAD)\n",            params.use_vad ? "true" : "false");
+    fprintf(stderr, "  -vm FNAME, --vad-model FNAME               [%-7s] VAD model path\n",                                   params.vad_model.c_str());
+    fprintf(stderr, "  -vt N,     --vad-threshold N               [%-7.2f] VAD threshold for speech recognition\n",           params.vad_threshold);
+    fprintf(stderr, "  -vspd N,   --vad-min-speech-duration-ms  N [%-7d] VAD min speech duration (ms)\n",                params.vad_min_speech_duration_ms);
+    fprintf(stderr, "  -vsd N,    --vad-min-silence-duration-ms N [%-7d] VAD min silence duration (to split segments)\n",      params.vad_min_silence_duration_ms);
+    fprintf(stderr, "  -vmsd N,   --vad-max-speech-duration-s   N [%-7s] VAD max speech duration (auto-split longer)\n",      params.vad_max_speech_duration_s == FLT_MAX ?
+                                                                                                                                  std::string("FLT_MAX").c_str() :
+                                                                                                                                  std::to_string(params.vad_max_speech_duration_s).c_str());
+    fprintf(stderr, "  -vp N,     --vad-speech-pad-ms           N [%-7d] VAD speech padding (extend segments)\n",             params.vad_speech_pad_ms);
+    fprintf(stderr, "  -vo N,     --vad-samples-overlap         N [%-7.2f] VAD samples overlap (seconds between segments)\n", params.vad_samples_overlap);
     fprintf(stderr, "  -tdrz,    --tinydiarize   [%-7s] enable tinydiarize (requires a tdrz model)\n",     params.tinydiarize ? "true" : "false");
     fprintf(stderr, "  -sa,      --save-audio    [%-7s] save the recorded audio to a file\n",              params.save_audio ? "true" : "false");
     fprintf(stderr, "  -ng,      --no-gpu        [%-7s] disable GPU inference\n",                          params.use_gpu ? "false" : "true");
@@ -355,7 +368,7 @@ int main(int argc, char ** argv) {
 
             wparams.tdrz_enable      = params.tinydiarize; // [TDRZ]
             // Enable Silero-VAD if requested (library loads model internally)
-            if (!params.vad_model.empty()) {
+            if (params.use_vad && !params.vad_model.empty()) {
                 wparams.vad            = true;
                 wparams.vad_model_path = params.vad_model.c_str();
                 wparams.vad_params.threshold               = params.vad_threshold;
