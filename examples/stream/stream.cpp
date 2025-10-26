@@ -63,39 +63,32 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
             whisper_print_usage(argc, argv, params);
             exit(0);
         }
-        else if (arg == "-t"    || arg == "--threads")       { params.n_threads     = std::stoi(argv[++i]); }
-        else if (                  arg == "--step")          { params.step_ms       = std::stoi(argv[++i]); }
-        else if (                  arg == "--length")        { params.length_ms     = std::stoi(argv[++i]); }
-        else if (                  arg == "--keep")          { params.keep_ms       = std::stoi(argv[++i]); }
-        else if (arg == "-c"    || arg == "--capture")       { params.capture_id    = std::stoi(argv[++i]); }
-        else if (arg == "-mt"   || arg == "--max-tokens")    { params.max_tokens    = std::stoi(argv[++i]); }
-        else if (arg == "-ac"   || arg == "--audio-ctx")     { params.audio_ctx     = std::stoi(argv[++i]); }
-        else if (arg == "-bs"   || arg == "--beam-size")     { params.beam_size     = std::stoi(argv[++i]); }
-        else if (arg == "-vth"  || arg == "--vad-thold")     { params.vad_thold     = std::stof(argv[++i]); }
-        else if (arg == "-fth"  || arg == "--freq-thold")    { params.freq_thold    = std::stof(argv[++i]); }
+        else if (arg == "-t"    || arg == "--threads")       { params.n_threads     = std::stoi(ARGV_NEXT); }
+        else if (                  arg == "--step")          { params.step_ms       = std::stoi(ARGV_NEXT); }
+        else if (                  arg == "--length")        { params.length_ms     = std::stoi(ARGV_NEXT); }
+        else if (                  arg == "--keep")          { params.keep_ms       = std::stoi(ARGV_NEXT); }
+        else if (arg == "-c"    || arg == "--capture")       { params.capture_id    = std::stoi(ARGV_NEXT); }
+        else if (arg == "-mt"   || arg == "--max-tokens")    { params.max_tokens    = std::stoi(ARGV_NEXT); }
+        else if (arg == "-ac"   || arg == "--audio-ctx")     { params.audio_ctx     = std::stoi(ARGV_NEXT); }
+        else if (arg == "-bs"   || arg == "--beam-size")     { params.beam_size     = std::stoi(ARGV_NEXT); }
+        else if (arg == "-vth"  || arg == "--vad-thold")     { params.vad_thold     = std::stof(ARGV_NEXT); }
+        else if (arg == "-fth"  || arg == "--freq-thold")    { params.freq_thold    = std::stof(ARGV_NEXT); }
         else if (arg == "-tr"   || arg == "--translate")     { params.translate     = true; }
         else if (arg == "-nf"   || arg == "--no-fallback")   { params.no_fallback   = true; }
         else if (arg == "-ps"   || arg == "--print-special") { params.print_special = true; }
         else if (arg == "-kc"   || arg == "--keep-context")  { params.no_context    = false; }
-        else if (arg == "-l"    || arg == "--language")      { params.language      = argv[++i]; }
-        else if (arg == "-m"    || arg == "--model")         { params.model         = argv[++i]; }
-        else if (arg == "-f"    || arg == "--file")          { params.fname_out     = argv[++i]; }
+        else if (arg == "-l"    || arg == "--language")      { params.language      = ARGV_NEXT; }
+        else if (arg == "-m"    || arg == "--model")         { params.model         = ARGV_NEXT; }
+        else if (arg == "-f"    || arg == "--file")          { params.fname_out     = ARGV_NEXT; }
         // ----- Silero-VAD short aliases (parity with cli.cpp) -----
         else if (arg == "--vad")                               { params.use_vad       = true; }
-        else if (arg == "-vm"   || arg == "--vad-model")       { params.vad_model     = argv[++i]; params.use_vad = true; }
-        else if (arg == "-vt"   || arg == "--vad-threshold")   { params.vad_threshold = std::stof(argv[++i]); }
-        else if (arg == "-vspd" || arg == "--vad-min-speech-duration-ms")  { params.vad_min_speech_duration_ms  = std::stoi(argv[++i]); }
-        else if (arg == "-vsd"  || arg == "--vad-min-silence-duration-ms") { params.vad_min_silence_duration_ms = std::stoi(argv[++i]); }
-        else if (arg == "-vmsd" || arg == "--vad-max-speech-duration-s")   { params.vad_max_speech_duration_s   = std::stof(argv[++i]); }
-        else if (arg == "-vp"   || arg == "--vad-speech-pad-ms")           { params.vad_speech_pad_ms           = std::stoi(argv[++i]); }
-        else if (arg == "-vo"   || arg == "--vad-samples-overlap")         { params.vad_samples_overlap         = std::stof(argv[++i]); }
-        else if (arg == "--vad-model")                        { params.vad_model     = argv[++i]; params.use_vad = true; }
-        else if (arg == "--vad-threshold")                    { params.vad_threshold = std::stof(argv[++i]); }
-        else if (arg == "--vad-min-speech-duration-ms")       { params.vad_min_speech_duration_ms  = std::stoi(argv[++i]); }
-        else if (arg == "--vad-min-silence-duration-ms")      { params.vad_min_silence_duration_ms = std::stoi(argv[++i]); }
-        else if (arg == "--vad-max-speech-duration-s")        { params.vad_max_speech_duration_s   = std::stof(argv[++i]); }
-        else if (arg == "--vad-speech-pad-ms")                { params.vad_speech_pad_ms           = std::stoi(argv[++i]); }
-        else if (arg == "--vad-samples-overlap")              { params.vad_samples_overlap         = std::stof(argv[++i]); }
+        else if (arg == "-vm"   || arg == "--vad-model")       { params.vad_model     = ARGV_NEXT; params.use_vad = true; }
+        else if (arg == "-vt"   || arg == "--vad-threshold")   { params.vad_threshold = std::stof(ARGV_NEXT); }
+        else if (arg == "-vspd" || arg == "--vad-min-speech-duration-ms")  { params.vad_min_speech_duration_ms  = std::stoi(ARGV_NEXT); }
+        else if (arg == "-vsd"  || arg == "--vad-min-silence-duration-ms") { params.vad_min_silence_duration_ms = std::stoi(ARGV_NEXT); }
+        else if (arg == "-vmsd" || arg == "--vad-max-speech-duration-s")   { params.vad_max_speech_duration_s   = std::stof(ARGV_NEXT); }
+        else if (arg == "-vp"   || arg == "--vad-speech-pad-ms")           { params.vad_speech_pad_ms           = std::stoi(ARGV_NEXT); }
+        else if (arg == "-vo"   || arg == "--vad-samples-overlap")         { params.vad_samples_overlap         = std::stof(ARGV_NEXT); }
         else if (arg == "-tdrz" || arg == "--tinydiarize")   { params.tinydiarize   = true; }
         else if (arg == "-sa"   || arg == "--save-audio")    { params.save_audio    = true; }
         else if (arg == "-ng"   || arg == "--no-gpu")        { params.use_gpu       = false; }
