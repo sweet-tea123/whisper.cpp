@@ -164,7 +164,7 @@ int main(int argc, char ** argv) {
     const int n_samples_keep = (1e-3*params.keep_ms  )*WHISPER_SAMPLE_RATE;
     const int n_samples_30s  = (1e-3*30000.0         )*WHISPER_SAMPLE_RATE;
 
-    const bool use_vad = n_samples_step <= 0; // sliding window mode uses VAD
+    const bool use_vad = n_samples_step <= 0 && !(params.use_vad && !params.vad_model.empty());
 
     const int n_new_line = !use_vad ? std::max(1, params.length_ms / params.step_ms - 1) : 1; // number of steps to print new line
 
