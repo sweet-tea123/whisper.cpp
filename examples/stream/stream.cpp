@@ -63,6 +63,7 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
             whisper_print_usage(argc, argv, params);
             exit(0);
         }
+        #define ARGV_NEXT (((i + 1) < argc) ? argv[++i] : requires_value_error(arg))
         else if (arg == "-t"    || arg == "--threads")       { params.n_threads     = std::stoi(ARGV_NEXT); }
         else if (                  arg == "--step")          { params.step_ms       = std::stoi(ARGV_NEXT); }
         else if (                  arg == "--length")        { params.length_ms     = std::stoi(ARGV_NEXT); }
