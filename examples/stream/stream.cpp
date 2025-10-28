@@ -55,6 +55,11 @@ struct whisper_params {
 
 void whisper_print_usage(int argc, char ** argv, const whisper_params & params);
 
+static char * requires_value_error(const std::string & arg) {
+    fprintf(stderr, "error: argument %s requires value\n", arg.c_str());
+    exit(0);
+}
+
 static bool whisper_params_parse(int argc, char ** argv, whisper_params & params) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
